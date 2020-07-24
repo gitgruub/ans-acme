@@ -10,8 +10,9 @@ works with Ubuntu 14.04/18.04
 this role sets up LetsEncrypt on a server
 
 this role can deploy 2 different agents:
-* a minimal "acme_tiny" script and helper tool that has minimal dependencies
-* the standard "certbot" tool endorsed by LetsEncrypt
+
+- a minimal "acme_tiny" script and helper tool that has minimal dependencies
+- the standard "certbot" tool endorsed by LetsEncrypt
 
 usage
 ======
