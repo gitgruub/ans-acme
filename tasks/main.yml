@@ -1,0 +1,9 @@
+---
+- import_tasks: "certbot.yml"
+  become: yes
+  when:
+    - acme_tiny == False
+- import_tasks: "acmetiny.yml"
+  when:
+    - acme_tiny == True
+

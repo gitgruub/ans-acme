@@ -1,0 +1,109 @@
+---
+
+- name: acmetiny - Add acme group
+  group:
+    name: "{{ acme_user }}"
+    system: yes
+    gid: "{{ acme_user_id }}"
+
+- name: acmetiny - Add acme user
+  user:
+    name: "{{ acme_user }}"
+    group: "{{ acme_user }}"
+    system: yes
+    uid: "{{ acme_user_id }}"
+    shell: "/bin/false"
+
+- name: acmetiny - Make config dir
+  file:
+    path: "{{ acme_cfg_dir }}"
+    state: directory
+    owner: root
+    group: "{{ acme_user }}"
+    mode: 02750
+
+- name: acmetiny - Make web dir
+  file:
+    path: "{{ acme_web_dir }}"
+    state: directory
+    owner: root
+    group: "{{ acme_user }}"
+    mode: 02775
+
+- name: acmetiny - Add cron entry
+  copy:
+    content: "0 0 1 * * {{ acme_bin_dir }}/acme_tiny_renew.py >> /var/log/acme_tiny_renew.log 2>&1 && {{ acme_renew_postcmd }}"
+    dest: "/etc/cron.d/acme-renewal"
+    owner: root
+    group: root
+    mode: 0750
+
+- name: acmetiny - Add conf file
+  template:
+    src: acme.json.j2
+    dest: '/etc/acme.json'
+    owner: root
+    group: root
+    mode: 0750
+
+- name: acmetiny - Make domain dirs
+  file:
+    path: "{{ acme_cfg_dir }}/{{ item.key }}"
+    state: directory
+    owner: root
+    group: "{{ acme_user }}"
+    mode: 02750
+  loop: "{{ acme_doms|dict2items }}"
+
+- name: acmetiny - Make account key
+  shell:
+    cmd: "openssl genrsa {{ acme_keysize }} > account.key"
+  args:
+    chdir: "{{ acme_cfg_dir }}"
+    creates: account.key
+
+- name: acmetiny - Make domain keys
+  shell:
+    cmd: "openssl genrsa {{ acme_keysize }} > {{ acme_cfg_dir }}/{{ item.key }}/domain.key"
+  args:
+    chdir: "{{ acme_cfg_dir }}/{{ item.key }}"
+    creates: domain.key
+  loop: "{{ acme_doms|dict2items }}"
+
+- name: acmetiny - Make domain CSR .cnf(s)
+  copy:
+    content: |
+      [ SAN ]
+      subjectAltName = @alt_names
+      [ alt_names ]
+      DNS.0 = {{ item.key }}
+      {% for i in range(item.value|count) %}
+      DNS.{{ i+1 }} = {{ item.value[i] }}.{{ item.key }}
+      {% endfor %}
+    dest: "{{ acme_cfg_dir }}/{{ item.key }}/csr.cnf"
+    owner: root
+    group: "{{ acme_user }}"
+    mode: 0640
+  loop: "{{ acme_doms|dict2items }}"
+
+#- name: acmetiny - Make domain CSRs
+#  shell:
+#    cmd: "openssl req -new -sha256 -key domain.key -subj '/CN={{ item }}' > domain.csr"
+#  args:
+#    chdir: "{{ acme_cfg_dir }}/{{ item }}"
+#    creates: domain.csr
+#  loop: "{{ acme_doms }}"
+
+- name: acmetiny - Make domain CSRs (with SANs)
+  shell:
+    cmd: |
+      openssl req -new -sha256 -key domain.key \
+       -subj '/' -reqexts SAN \
+       -config <(cat /etc/ssl/openssl.cnf csr.cnf) > domain.csr
+  args:
+    chdir: "{{ acme_cfg_dir }}/{{ item.key }}"
+    creates: domain.csr
+    executable: /bin/bash
+  loop: "{{ acme_doms|dict2items }}"
+  notify:
+    - acme-renewal

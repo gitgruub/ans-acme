@@ -1,0 +1,9 @@
+# disable builtin logrotate
+max-log-backups = 0
+# agree to terms
+agree-tos
+# 
+rsa-key-size = {{ acme_keysize }}
+post-hook = {{ acme_renew_postcmd }}
+email = {{ acme_mail_addr }}
+

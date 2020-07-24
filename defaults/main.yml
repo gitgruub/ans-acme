@@ -1,0 +1,13 @@
+acme_tiny: True
+acme_mail_addr: 'abc@example.com'
+acme_user: acme
+acme_user_id: 444
+acme_keysize: 4096
+acme_web_user: www-data
+acme_web_dir: /var/www/well-known/acme-challenge
+acme_bin_dir: /usr/local/bin/
+acme_cfg_dir: /etc/acme/
+acme_renew_postcmd: 'service apache2 reload'
+acme_doms:
+  example.com: ['www', 'sub.dom.ain']
+  google.com: []

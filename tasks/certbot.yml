@@ -1,0 +1,34 @@
+---
+
+- name: certbot - install apt repo
+  apt_repository:
+    repo: "ppa:certbot/certbot"
+    state: present
+
+- name: certbot - install app
+  apt:
+    name: "certbot"
+    cache_valid_time: 3600
+    policy_rc_d: 101
+
+- name: certbot - make web dir
+  file:
+    path: "{{ acme_web_dir }}"
+    state: directory
+    owner: root
+    group: "{{ acme_web_user }}"
+    mode: 02775
+
+- name: certbot - create config
+  template:
+    dest: "/etc/letsencrypt/cli.ini"
+    src: "cli.ini.j2"
+    owner: root
+    group: root
+    mode: 0660
+
+- name: certbot - bootstrap cert
+  command: "certbot certonly --non-interactive --webroot -w {{ acme_web_dir }} -d {{ item.key }} {% if item.value|length != 0 %} -d {{ item.value | join(' -d') }}.{{ item.key }} {% endif %}"
+  args:
+    creates: "/etc/letsencrypt/live/{{ item.key }}/privkey.pem"
+  loop: "{{ acme_doms|dict2items }}"

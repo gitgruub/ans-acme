@@ -1,0 +1,3 @@
+- name: acme-renewal
+  shell:
+    cmd: "{{ acme_bin_dir }}/acme_tiny_renew.py"
